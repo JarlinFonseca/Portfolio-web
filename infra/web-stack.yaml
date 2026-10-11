@@ -1,0 +1,273 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Portfolio Jarlin Fonseca - sitio estático (R1): S3 privado + CloudFront con Origin Access Control,
+  CloudFront Function de redirecciones, cabeceras de seguridad, rol OIDC para GitHub Actions y alerta de presupuesto.
+  Desplegar en us-east-1 (requisito de ACM para CloudFront).
+
+Parameters:
+  GitHubRepository:
+    Type: String
+    Description: Repositorio autorizado a desplegar, formato owner/repo
+    Default: JarlinFonseca/portfolio-web
+  GitHubOidcProviderArn:
+    Type: String
+    Default: ''
+    Description: ARN del proveedor OIDC de GitHub si ya existe en la cuenta (vacío = se crea)
+  DomainName:
+    Type: String
+    Default: ''
+    Description: Dominio propio (opcional). Vacío = se usa el dominio *.cloudfront.net
+  CertificateArn:
+    Type: String
+    Default: ''
+    Description: Certificado ACM en us-east-1 para el dominio (obligatorio si se indica DomainName)
+  BudgetEmail:
+    Type: String
+    Description: Correo para la alerta de presupuesto
+
+Conditions:
+  HasDomain: !Not [!Equals [!Ref DomainName, '']]
+  CreateOidcProvider: !Equals [!Ref GitHubOidcProviderArn, '']
+
+Resources:
+  # ── Bucket privado del sitio ──────────────────────────────────────────────────────────
+  WebBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub portfolio-web-${AWS::AccountId}
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault: { SSEAlgorithm: AES256 }
+      OwnershipControls:
+        Rules: [{ ObjectOwnership: BucketOwnerEnforced }]
+
+  WebBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref WebBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          # Solo la distribución lee; ListBucket hace que un archivo inexistente devuelva 404 y no 403
+          - Sid: AllowCloudFrontRead
+            Effect: Allow
+            Principal: { Service: cloudfront.amazonaws.com }
+            Action: ['s3:GetObject', 's3:ListBucket']
+            Resource: [!GetAtt WebBucket.Arn, !Sub '${WebBucket.Arn}/*']
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub arn:aws:cloudfront::${AWS::AccountId}:distribution/${Distribution}
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource: [!GetAtt WebBucket.Arn, !Sub '${WebBucket.Arn}/*']
+            Condition: { Bool: { aws:SecureTransport: 'false' } }
+
+  OriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub portfolio-web-oac-${AWS::StackName}
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  # ── Borde: redirecciones y reescrituras (mismo código que pnpm preview y pnpm test:edge) ──
+  EdgeFunction:
+    Type: AWS::CloudFront::Function
+    Properties:
+      Name: !Sub portfolio-web-router-${AWS::StackName}
+      AutoPublish: true
+      FunctionConfig:
+        Comment: '"/" por idioma, /es y /en pre-renderizadas, SPA fallback'
+        Runtime: cloudfront-js-2.0
+      # Se sincroniza con infra/cloudfront-function.js (ver README > Despliegue)
+      FunctionCode: |
+        function handler(event) {
+          var req = event.request;
+          var uri = req.uri;
+          if (uri === '/' || uri === '') {
+            var cookie = req.cookies && req.cookies.lang && req.cookies.lang.value;
+            var accept = (req.headers['accept-language'] && req.headers['accept-language'].value) || '';
+            var lang = cookie === 'en' || cookie === 'es' ? cookie : /^en/i.test(accept) ? 'en' : 'es';
+            return { statusCode: 302, statusDescription: 'Found',
+              headers: { location: { value: '/' + lang }, 'cache-control': { value: 'no-store' } } };
+          }
+          if (uri === '/es' || uri === '/es/' || uri === '/en' || uri === '/en/') {
+            req.uri = '/' + uri.replace(/\//g, '').slice(0, 2) + '/index.html';
+            return req;
+          }
+          if (/\.[a-z0-9]+$/i.test(uri)) return req;
+          req.uri = '/index.html';
+          return req;
+        }
+
+  # ── Cabeceras de seguridad ───────────────────────────────────────────────────────────
+  SecurityHeaders:
+    Type: AWS::CloudFront::ResponseHeadersPolicy
+    Properties:
+      ResponseHeadersPolicyConfig:
+        Name: !Sub portfolio-web-security-${AWS::StackName}
+        SecurityHeadersConfig:
+          StrictTransportSecurity:
+            AccessControlMaxAgeSec: 63072000
+            IncludeSubdomains: true
+            Preload: true
+            Override: true
+          ContentTypeOptions: { Override: true }
+          FrameOptions: { FrameOption: DENY, Override: true }
+          ReferrerPolicy: { ReferrerPolicy: strict-origin-when-cross-origin, Override: true }
+          ContentSecurityPolicy:
+            Override: true
+            # React Router hidrata con scripts en línea: sus hashes se agregan en FE-029 al primer despliegue
+            ContentSecurityPolicy: >-
+              default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';
+              img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none';
+              base-uri 'self'; form-action 'self'; object-src 'none'
+        CustomHeadersConfig:
+          Items:
+            - Header: Permissions-Policy
+              Value: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+              Override: true
+
+  HtmlCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: !Sub portfolio-web-html-${AWS::StackName}
+        Comment: HTML y .data revalidados (TTL corto en el borde)
+        DefaultTTL: 60
+        MaxTTL: 300
+        MinTTL: 0
+        ParametersInCacheKeyAndForwardedToOrigin:
+          EnableAcceptEncodingGzip: true
+          EnableAcceptEncodingBrotli: true
+          HeadersConfig: { HeaderBehavior: none }
+          CookiesConfig: { CookieBehavior: none }
+          QueryStringsConfig: { QueryStringBehavior: none }
+
+  # ── Distribución ─────────────────────────────────────────────────────────────────────
+  Distribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: Portfolio Jarlin Fonseca
+        HttpVersion: http2and3
+        IPV6Enabled: true
+        PriceClass: PriceClass_100
+        Aliases: !If [HasDomain, [!Ref DomainName], !Ref AWS::NoValue]
+        ViewerCertificate: !If
+          - HasDomain
+          - AcmCertificateArn: !Ref CertificateArn
+            SslSupportMethod: sni-only
+            MinimumProtocolVersion: TLSv1.2_2021
+          - CloudFrontDefaultCertificate: true
+        Origins:
+          - Id: web-s3
+            DomainName: !GetAtt WebBucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt OriginAccessControl.Id
+            S3OriginConfig: { OriginAccessIdentity: '' }
+        DefaultCacheBehavior:
+          TargetOriginId: web-s3
+          ViewerProtocolPolicy: redirect-to-https
+          Compress: true
+          AllowedMethods: [GET, HEAD, OPTIONS]
+          CachedMethods: [GET, HEAD]
+          CachePolicyId: !Ref HtmlCachePolicy
+          ResponseHeadersPolicyId: !Ref SecurityHeaders
+          FunctionAssociations:
+            - EventType: viewer-request
+              FunctionARN: !GetAtt EdgeFunction.FunctionMetadata.FunctionARN
+        CacheBehaviors:
+          - PathPattern: /assets/*
+            TargetOriginId: web-s3
+            ViewerProtocolPolicy: redirect-to-https
+            Compress: true
+            AllowedMethods: [GET, HEAD]
+            CachedMethods: [GET, HEAD]
+            CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6 # Managed-CachingOptimized
+            ResponseHeadersPolicyId: !Ref SecurityHeaders
+          # R3: se agregan /api/* (origen EC2) y /media/* (bucket de media con OAC) — FE-061
+        CustomErrorResponses:
+          - ErrorCode: 404
+            ResponseCode: 404
+            ResponsePagePath: /index.html
+            ErrorCachingMinTTL: 10
+
+  # ── Despliegue desde GitHub Actions con OIDC (sin llaves de larga duración) ───────────
+  GitHubOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Condition: CreateOidcProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList: [sts.amazonaws.com]
+
+  DeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub portfolio-web-deploy-${AWS::StackName}
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !If [CreateOidcProvider, !Ref GitHubOidcProvider, !Ref GitHubOidcProviderArn]
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                # solo la rama main del repositorio, en el ambiente production
+                token.actions.githubusercontent.com:sub: !Sub repo:${GitHubRepository}:environment:production
+      Policies:
+        - PolicyName: deploy-web
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: ['s3:PutObject', 's3:DeleteObject']
+                Resource: !Sub '${WebBucket.Arn}/*'
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource: !GetAtt WebBucket.Arn
+              - Effect: Allow
+                Action: cloudfront:CreateInvalidation
+                Resource: !Sub arn:aws:cloudfront::${AWS::AccountId}:distribution/${Distribution}
+
+  # ── Alerta de costos ─────────────────────────────────────────────────────────────────
+  MonthlyBudget:
+    Type: AWS::Budgets::Budget
+    Properties:
+      Budget:
+        BudgetName: !Sub portfolio-web-${AWS::StackName}
+        BudgetType: COST
+        TimeUnit: MONTHLY
+        BudgetLimit: { Amount: 1, Unit: USD }
+      NotificationsWithSubscribers:
+        - Notification: { NotificationType: ACTUAL, ComparisonOperator: GREATER_THAN, Threshold: 100 }
+          Subscribers: [{ SubscriptionType: EMAIL, Address: !Ref BudgetEmail }]
+        - Notification: { NotificationType: FORECASTED, ComparisonOperator: GREATER_THAN, Threshold: 80 }
+          Subscribers: [{ SubscriptionType: EMAIL, Address: !Ref BudgetEmail }]
+
+Outputs:
+  BucketName:
+    Value: !Ref WebBucket
+    Description: Variable WEB_BUCKET del repositorio
+  DistributionId:
+    Value: !Ref Distribution
+    Description: Variable CF_DISTRIBUTION_ID del repositorio
+  DistributionDomain:
+    Value: !GetAtt Distribution.DomainName
+    Description: URL pública mientras no haya dominio (VITE_SITE_URL)
+  DeployRoleArn:
+    Value: !GetAtt DeployRole.Arn
+    Description: Variable AWS_DEPLOY_ROLE_ARN del repositorio

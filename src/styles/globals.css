@@ -1,0 +1,188 @@
+@import 'tailwindcss';
+
+/* Fuentes autoalojadas (subconjunto latino): sin peticiones a terceros */
+@import '@fontsource-variable/bricolage-grotesque/index.css';
+@import '@fontsource/instrument-serif/latin-400-italic.css';
+@import '@fontsource-variable/geist-mono/index.css';
+
+@theme {
+  --color-paper: #eff0ec; /* fondo */
+  --color-surface: #fafaf7; /* tarjetas */
+  --color-ink: #14161a; /* texto y bordes */
+  --color-ink-soft: #3a3f48; /* párrafos */
+  --color-ink-muted: #4a4f59; /* texto secundario (≥ 4.5:1 sobre paper) */
+  --color-line: #d9dbd4;
+  --color-line-strong: #c5c8c0;
+  --color-chip: #ebece7;
+  --color-cobalt: #2d5be3; /* acento principal */
+  --color-cobalt-deep: #1e46c4;
+  --color-cobalt-soft: #e3e9fb;
+  --color-cobalt-light: #8fa9f5;
+  --color-signal: #f26b38; /* acento secundario: decoración, nunca texto sobre claro */
+  --color-signal-light: #f59a72;
+  --color-success: #2f7d5b;
+  --color-danger: #b4441c;
+  --color-night: #14161a;
+  --color-night-line: #33363d;
+  --color-night-text: #b9bcc4;
+
+  --font-display: 'Bricolage Grotesque Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Instrument Serif', Georgia, serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, Menlo, monospace;
+
+  --radius-card: 22px;
+  --radius-pill: 999px;
+  --shadow-offset: 5px 5px 0 var(--color-ink);
+  --shadow-card-hover: 0 18px 40px -24px rgb(20 22 26 / 45%);
+
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-float-slow: float 7.5s ease-in-out -2s infinite;
+  --animate-float-fast: float 5s ease-in-out -1s infinite;
+  --animate-blink: blink 1.1s steps(1) infinite;
+  --animate-spin-cube: spin-cube 22s linear infinite;
+
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+  @keyframes blink {
+    50% {
+      opacity: 0;
+    }
+  }
+  @keyframes spin-cube {
+    from {
+      transform: rotateX(-22deg) rotateY(0deg);
+    }
+    to {
+      transform: rotateX(-22deg) rotateY(360deg);
+    }
+  }
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-paper font-display text-ink antialiased;
+  }
+  /* Trama de puntos del diseño */
+  .bg-dots {
+    background-color: var(--color-paper);
+    background-image: radial-gradient(#d3d5cd 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  a {
+    color: inherit;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-cobalt);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+  [id] {
+    scroll-margin-top: 88px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .serif-accent {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+  .kicker {
+    @apply font-mono text-[13px] text-cobalt;
+  }
+  .section-title {
+    @apply m-0 text-[clamp(34px,4vw,58px)] leading-[1.02] font-bold tracking-[-0.03em];
+  }
+  .lift {
+    transition:
+      transform 0.2s ease,
+      background-color 0.2s ease,
+      box-shadow 0.25s ease;
+  }
+  .lift:hover {
+    transform: translateY(-2px);
+  }
+  .card-lift {
+    transition:
+      transform 0.25s ease,
+      box-shadow 0.25s ease;
+  }
+  .card-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-card-hover);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .lift:hover,
+    .card-lift:hover {
+      transform: none;
+    }
+  }
+  /* Campo de formulario del admin */
+  .field {
+    @apply w-full rounded-xl border border-line-strong bg-white px-4 py-3 text-[15px] text-ink transition-shadow placeholder:text-[#8a8e97] disabled:cursor-not-allowed disabled:bg-[#e8e9e4] disabled:text-ink-muted;
+  }
+  .field:focus {
+    outline: none;
+    border-color: var(--color-cobalt);
+    box-shadow: 0 0 0 3px rgb(45 91 227 / 18%);
+  }
+  .field[aria-invalid='true'] {
+    border-color: var(--color-danger);
+  }
+}
+
+/* Cubo CSS 3D */
+.cube-scene {
+  perspective: 900px;
+}
+.cube {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  transform-style: preserve-3d;
+  transform: rotateX(-22deg) rotateY(-28deg);
+}
+.cube[data-animated='true'] {
+  animation: var(--animate-spin-cube);
+}
+.cube > div {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  border: 1.5px solid var(--color-ink);
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 20px;
+  backface-visibility: hidden;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cube[data-animated='true'] {
+    animation: none;
+  }
+}

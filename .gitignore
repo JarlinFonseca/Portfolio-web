@@ -1,0 +1,11 @@
+node_modules
+/build
+/.react-router
+/coverage
+/playwright-report
+/test-results
+/.lighthouseci
+.env.local
+.env.*.local
+*.log
+.DS_Store

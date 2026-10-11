@@ -1,0 +1,118 @@
+{
+  "meta": {
+    "title": "Jarlin Fonseca — Backend Developer · Java, Spring Boot & NestJS",
+    "description": "Systems Engineer and backend developer based in Cúcuta, Colombia. APIs and microservices with Java/Spring Boot and Node.js/NestJS, AWS and CI/CD.",
+    "ogLocale": "en_US",
+    "notFoundTitle": "Page not found — Jarlin Fonseca"
+  },
+  "a11y": {
+    "skipToContent": "Skip to content",
+    "newTab": "(opens in a new tab)",
+    "mainNav": "Main",
+    "language": "Language",
+    "home": "Home"
+  },
+  "nav": {
+    "projects": "Projects",
+    "how": "How I work",
+    "stack": "Stack",
+    "career": "Experience",
+    "contact": "Contact"
+  },
+  "lang": {
+    "es": "Español",
+    "en": "English"
+  },
+  "resume": {
+    "download": "Download CV",
+    "unavailable": "The CV is not available yet"
+  },
+  "hero": {
+    "photoAlt": "Photo of {{name}}",
+    "photoPlaceholder": "Silhouette in place of {{name}}'s photo",
+    "titleBefore": "I build the backend",
+    "titleHighlight": "you never see,",
+    "titleAfter": "but everything runs on.",
+    "ctaProjects": "See projects",
+    "ctaContact": "Let’s talk",
+    "illustration": "Isometric microservices network with messages traveling between gateway, broker, database and APIs"
+  },
+  "stats": {
+    "label": "Impact in numbers"
+  },
+  "projects": {
+    "kicker": "// projects",
+    "titleBefore": "Work that runs",
+    "titleHighlight": "in production.",
+    "lead": "Most of my work lives in private client systems: the code is confidential, but the problem, the solution and the impact can be shared.",
+    "filter": {
+      "label": "Filter projects",
+      "all": "All",
+      "private": "Enterprise",
+      "open": "Open & academic"
+    },
+    "nda": "Private code · NDA",
+    "openBadge": "open source",
+    "viewRepo": "View on GitHub",
+    "kind": {
+      "PRIVATE": "Private",
+      "OPEN": "Open"
+    },
+    "empty": "There are no projects in this category.",
+    "resultCount_one": "{{count}} project",
+    "resultCount_other": "{{count}} projects"
+  },
+  "how": {
+    "kicker": "// how I work",
+    "titleBefore": "Clean code, pipelines",
+    "titleHighlight": "that don’t break.",
+    "illustration": "3D illustration of a developer coding on a laptop"
+  },
+  "stack": {
+    "kicker": "// stack",
+    "titleBefore": "Tools I",
+    "titleHighlight": "master.",
+    "lead": "Backend first, with cloud, quality and security built in from day one.",
+    "cubeLabel": "Main technologies: {{list}}"
+  },
+  "career": {
+    "kicker": "// experience",
+    "titleBefore": "From university",
+    "titleHighlight": "to production.",
+    "current": "Current",
+    "present": "now",
+    "education": "Education",
+    "certifications": "Certifications",
+    "languages": "Languages",
+    "level": {
+      "NATIVE": "Native",
+      "A1": "A1",
+      "A2": "A2",
+      "B1": "B1",
+      "B2": "B2",
+      "C1": "C1",
+      "C2": "C2"
+    }
+  },
+  "contact": {
+    "kicker": "// contact",
+    "titleBefore": "Shall we build something",
+    "titleHighlight": "solid together?",
+    "emailLabel": "Email {{email}}"
+  },
+  "footer": {
+    "credit": "Designed and built by Jarlin Fonseca",
+    "copyright": "© {{year}} {{name}}"
+  },
+  "notFound": {
+    "kicker": "// 404",
+    "title": "This page doesn’t exist.",
+    "text": "The link may be broken or the page was moved.",
+    "back": "Back to home"
+  },
+  "errors": {
+    "generic": "Something went wrong",
+    "genericText": "An unexpected error occurred. Try reloading the page.",
+    "reload": "Reload"
+  }
+}

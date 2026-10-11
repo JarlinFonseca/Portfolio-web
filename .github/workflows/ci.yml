@@ -1,0 +1,62 @@
+name: ci
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    env:
+      VITE_DATA_SOURCE: static
+      VITE_SITE_URL: http://localhost:4173
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4 # usa la versión de "packageManager"
+      - uses: actions/setup-node@v4
+        with: { node-version-file: .nvmrc, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Lint y formato
+        run: pnpm lint && pnpm format:check
+      - name: Tipos
+        run: pnpm typecheck
+      - name: Pruebas unitarias, de componentes y de contrato (cobertura ≥ 80 %)
+        run: pnpm test:coverage
+      - name: Casos de la CloudFront Function
+        run: pnpm test:edge
+      - name: Build (pre-render de /es y /en)
+        run: pnpm build
+      - name: Auditoría de dependencias de producción
+        run: pnpm audit --prod --audit-level high
+      - name: Navegador para e2e
+        run: pnpm exec playwright install --with-deps chromium
+      - name: e2e + accesibilidad (axe)
+        run: pnpm test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with: { name: playwright-report, path: playwright-report, retention-days: 7 }
+
+  lighthouse:
+    needs: quality
+    runs-on: ubuntu-latest
+    env:
+      VITE_DATA_SOURCE: static
+      VITE_SITE_URL: http://localhost:4173
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version-file: .nvmrc, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Lighthouse CI (presupuesto de la sección 11)
+        run: pnpm dlx @lhci/cli@0.15.x autorun
