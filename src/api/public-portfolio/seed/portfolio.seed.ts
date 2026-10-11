@@ -13,8 +13,8 @@ export const portfolioSeed: PortfolioContent = {
     role: 'Backend Developer · DevSecOps',
     location: 'Cúcuta, Colombia',
     intro: {
-      es: 'Ingeniero de Sistemas con más de 3 años diseñando APIs y servicios escalables, seguros y mantenibles en Java/Spring Boot y Node.js/NestJS — de la arquitectura al despliegue.',
-      en: 'Systems Engineer with 3+ years designing scalable, secure and maintainable APIs and services with Java/Spring Boot and Node.js/NestJS — from architecture to deployment.',
+      es: 'Desarrollador de Software con más de 3 años diseñando APIs y servicios escalables, seguros y mantenibles en Java/Spring Boot y Node.js/NestJS — de la arquitectura al despliegue.',
+      en: 'Software Developer with 3+ years designing scalable, secure and maintainable APIs and services with Java/Spring Boot and Node.js/NestJS — from architecture to deployment.',
     },
     photoUrl: null,
     email: 'jarlinandres5000@gmail.com',
