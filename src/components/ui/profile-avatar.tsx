@@ -16,7 +16,11 @@ export function ProfileAvatar({
     <div
       style={{ width: size, height: size }}
       className={cn(
-        'shrink-0 overflow-hidden rounded-full border-[1.5px] border-ink bg-[#dce4fc] shadow-offset',
+        'shrink-0 overflow-hidden rounded-full',
+        // la sombra sólida desplazada solo encaja con la silueta; sobre una foto se ve como un círculo negro detrás
+        photoUrl
+          ? 'bg-surface shadow-[0_0_0_3px_var(--color-surface),0_0_0_4px_rgb(20_22_26/12%),0_8px_20px_-8px_rgb(20_22_26/40%)]'
+          : 'border-[1.5px] border-ink bg-[#dce4fc] shadow-offset',
         className,
       )}
     >
@@ -27,7 +31,7 @@ export function ProfileAvatar({
           width={size}
           height={size}
           decoding="async"
-          className="block size-full object-cover object-[50%_30%]"
+          className="block size-full object-cover"
         />
       ) : (
         <svg viewBox="0 0 76 76" width={size} height={size} role="img" aria-label={alt} className="block">
