@@ -14,6 +14,7 @@ export function buildPersonJsonLd(data: PublicPortfolio, url: string) {
     address: { '@type': 'PostalAddress', addressLocality: profile.location },
     sameAs: [profile.linkedinUrl, profile.githubUrl],
     knowsAbout: data.stack.categories.flatMap((c) => c.technologies).slice(0, 20),
-    ...(profile.photoUrl ? { image: profile.photoUrl } : {}),
+    // schema.org pide URL absoluta: la ruta /media/... se resuelve contra la URL de la página
+    ...(profile.photoUrl ? { image: new URL(profile.photoUrl, url).href } : {}),
   };
 }

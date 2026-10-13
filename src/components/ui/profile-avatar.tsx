@@ -21,7 +21,14 @@ export function ProfileAvatar({
       )}
     >
       {photoUrl ? (
-        <img src={photoUrl} alt={alt} width={size} height={size} className="block size-full object-cover" />
+        <img
+          src={photoUrl}
+          alt={alt}
+          width={size}
+          height={size}
+          decoding="async"
+          className="block size-full object-cover object-[50%_30%]"
+        />
       ) : (
         <svg viewBox="0 0 76 76" width={size} height={size} role="img" aria-label={alt} className="block">
           <circle cx="38" cy="30" r="13" fill="#2D5BE3" />
